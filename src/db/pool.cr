@@ -203,16 +203,19 @@ module DB
           sleep @retry_delay if i >= current_available
           return yield
         rescue e : PoolResourceLost(T)
+          Log.info { "PoolResourceLost: #{stats}. Attempts tried: #{i}" }
           # if the connection is lost it will be closed by
           # the exception to release resources
           # we still need to remove it from the known pool.
           sync { delete(e.resource) }
         rescue e : PoolResourceRefused
+          Log.info { "PoolResourceRefused: #{stats}. Attempts tried: #{i}" }
           # a ConnectionRefused means a new connection
-          # was intended to be created,
-          # nothing to do but to retry soon
+          # was intended to be created
+          # nothing to due but to retry soon
         end
       end
+      Log.info { "PoolRetryAttemptsExceeded: #{stats}. Attempts tried: #{current_available + @retry_attempts}" }
       raise PoolRetryAttemptsExceeded.new
     end
 
